@@ -1,0 +1,4 @@
+test1:
+  dataset : 56
+  infile : 53
+  driver: less

@@ -9,21 +9,14 @@ resnet18_src_path: cv/classification/resnet18
 resnet18_build_path: null
 
 build_torch:
-  #pretrain_model_path: cv/classification/resnet18/resnet18.return_path
-  #input_shape: 
-  #batch_size: -1
   pretrained:
-    model_path: ${resnet18_dir_path}/resnet18.pth
+    model_path: ${resnet18_src_path}/resnet18.pth
   model_path: null
   load_pretrained: true
 
 torch:
-  #inherit: _build_onnx
-  pretrained:
-    model_path: ${_build_torch.pretrained.model_path}
-    batch_size: ${_build_torch.pretrained.batch_size}
-  model_path: ${_build_torch.model_path}
-  load_pretrained: ${_build_torch.load_pretrained}
+  inherit: build_torch
+
 
 
 build_onnx:

@@ -1,7 +1,7 @@
-from common.util import dict_get,logging, printItem, check_parameter
+from common.util import dict_get,logging, printItem, check_parameter,get_absolute_config
 from importlib import import_module
 from datazoo import getDataDir
-from omegaconf import OmegaConf
+from omegaconf import OmegaConf, DictConfig
 import pdb
 
 modeldict={
@@ -23,17 +23,19 @@ modeldict={
   }
 }
 
+
 def check_class_parameter(func):
-  def wrapper(class_instance,*args, **kwargs):
+  def wrapper(class_instance, *args, **kwargs):
     base_conf = class_instance.config
-    config = base_conf.gent(func.__name__,[])
+    config = get_absolute_config(base_conf, func.__name__)
     for k in kwargs:
       if k not in config:
-        raise TypeError
+        raise TypeError("{} not found".format(k))
       config[k] = kwargs[k]
-
-    #print(class_instance.__name__)
-    return func(self,*args,config)
+    if len(args) == 1 and type(args[0]) == DictConfig:
+      config = OmegaConf.merge(config,args[0])
+      return func(class_instance,config)
+    return func(class_instance,*args,config)
   return wrapper
  
 
@@ -85,8 +87,7 @@ def loadNet(cfg):
 
 class torchmodel:
   def __init__(self,model=None, model_path=None):
-    self.model = model
-    self.model_path = model_path
+    self.set(model, model_path)
   
   def __call__(self, cfg):
     if cfg.model_path:
@@ -95,6 +96,10 @@ class torchmodel:
       return self
     else:
       return None 
+  def set(self,model,model_path):
+    self.model = model
+    self.model_path = model_path
+
 class trtmodel:
   def __init__(self, model=None, model_path=None):
     self.model = model
@@ -122,13 +127,21 @@ class cvOnnxModel:
     return self
 
 class baseModel(object):
-  def __init__(self,args):
+  def __init__(self):
     self.torchmodel = None # key : shape, batch, model, model_path
     self.onnxmodel = None  #onnxmodel()  #{shape=3x320x320,  batch=1, model_path='///xd//x', model=onnx.load(model_path) }
     self.trtmodel = None # {shape=3x320x320,  batch=1, model_path='///xd//x', precesion=int8}
     self.batch_size = -1
     self.base_yaml = 'base.yaml'
-    self.config = OmegaConf.load(self.base_yaml)  # used in wrapper check_wrapper_paramter
+    try:
+      if self.extend_yaml:
+        self.config = OmegaConf.merge(OmegaConf.load(self.base_yaml), OmegaConf.load(self.extend_yaml))
+      else:
+        self.config = OmegaConf.load(self.base_yaml)  
+    except AttributeError as e:
+      logging.error('extend_yaml not defined')
+      raise AttributeError('extend_yaml not defined')
+
 
   def train(self,args):
     pass

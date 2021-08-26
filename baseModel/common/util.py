@@ -1,9 +1,12 @@
 import logging
 from omegaconf import OmegaConf,DictConfig
 import pdb
+import sys
 logging.basicConfig(level=logging.INFO, format="[%(asctime)s %(filename)s:%(lineno)d %(levelname)s] %(message)s")
 
-
+log = logging.getLogger()
+stdout_handler = logging.StreamHandler(sys.stdout)
+log.addHandler(stdout_handler)
 
 def dict_get(d, key, default=None):
     """Return non-None value for key from dict. Use default if necessary."""
@@ -45,33 +48,30 @@ def printItem(item,level=0):
         return
     print(' '*2*level,item)
 
-def copy_from_other_node(config, item):
+
+def get_absolute_config(config, item_key):
+  item  = OmegaConf.select(config, item_key)
   inherit_src = item.get('inherit',None)
   if inherit_src:
-    src_item = OmegaConf.select(config,inherit_src)
-    src_item = copy_from_other_node(config, src_item)
-    new_item = OmegaConf.merge(config[item], src_item)
+    inherit_item = get_absolute_config(config, inherit_src)
+    return OmegaConf.merge(inherit_item, item)
   else:
-    new_item = config.get(item,[])
-  return new_item
+    return item
 
-def check_parameter(base_yaml=None,extend_yaml=None):
+
+def check_parameter(base_yaml,extend_yaml=None):
     def wrapper(func):
         def innerwrapper(*args, **kwargs):
             base_conf = OmegaConf.load(base_yaml)
             if extend_yaml:
                 extend_config = OmegaConf.load(extend_yaml)
                 base_conf = OmegaConf.merge(base_conf, extend_config)
-            else:
-                raise TypeError('Illegal basel_yaml type')
-            config = base_conf.get(func.__name__, [])
-            #config = copy_from_other_node(base_conf, func.__name__)
-            # to do : add a copy attr which support copy from other node
+            #config = base_conf.get(func.__name__, [])
+            config = get_absolute_config(base_conf, func.__name__)
             for k in kwargs:
                 if k not in config:
                   raise TypeError
                 config[k] = kwargs[k]
-            #return func(*args, **config)
             return func(*args, config)
         return innerwrapper
     return wrapper

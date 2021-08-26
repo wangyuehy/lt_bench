@@ -1,5 +1,9 @@
-
 from common.util import logging
+import cv2
+import tensorrt as trt
+import pycuda.driver as cuda
+import numpy as np
+import pycuda.autoinit
 
 
 ########### preprocess the input data  ###########
@@ -59,7 +63,7 @@ def preprocess_classification(source_dir=None, source_file=None, input_shape=(3,
         imgname = line.strip().split(' ')[0]
         if imgname:
           imglist.append(imgname)
-  else
+  else:
     imglist = os.path.list(source_dir)
   
   for img in imglist:

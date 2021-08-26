@@ -22,10 +22,15 @@ torch:
   
 build_torch:
   model_path: null
-  input_shape: 3x224x224
   batch_size: -1
   version: 1
   verbose: false
+  model_path: null
+  load_pretrained: true
+  pretrained:
+    model_path: null
+
+
 ####################################
 onnx:
   return_path: false

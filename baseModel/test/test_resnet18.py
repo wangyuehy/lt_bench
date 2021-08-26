@@ -16,15 +16,24 @@ class test_resnet18(unittest.TestCase):
       for batch in [-1,8,16]:
         net = model.onnx(input_shape=inshape, batch_size=batch)
  
+def test_get_abs_config():
+  func_name = 'torch'
+  from omegaconf import OmegaConf
+  from base import get_absolute_config
+  base_config = OmegaConf.load('cv/classification/resnet18/resnet18.yaml')
+  final_config = get_absolute_config(base_config, func_name)
+  print(OmegaConf.to_yaml(final_config))
 
+ 
 
 def test_resnet18_torch():
-  model = base.loadNet(task='classification',model_type='resnet18')
+  model = base.loadNet(task='classification',model_type='resnet18')()
+  #from cv.classification.resnet18.resnet18 import model
   pdb.set_trace()
-  net = model.torch()
-  net = model.torch(return_path=true)
-  net = model.torch(model_path='xxx.pth')
-  net = model.torch(input_shape=[3,300,300],batch_size=16)
+  net = model.torch(load_pretrained=False)
+  pdb.set_trace()
+  net = model.torch(return_path=True)
+
   
 def test_resnet18_onnx():
   model = base.loadNet(task='classification',model='resnet18')
@@ -36,4 +45,4 @@ def test_resnet18_onnx():
 
 if __name__ == '__main__':
   test_resnet18_torch()
-
+  #test_get_abs_config()

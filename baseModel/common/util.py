@@ -2,6 +2,9 @@ import logging
 from omegaconf import OmegaConf,DictConfig
 import pdb
 import sys
+import os
+from pathlib import Path
+
 logging.basicConfig(level=logging.INFO, format="[%(asctime)s %(filename)s:%(lineno)d %(levelname)s] %(message)s")
 
 log = logging.getLogger()
@@ -48,7 +51,6 @@ def printItem(item,level=0):
         return
     print(' '*2*level,item)
 
-
 def get_absolute_config(config, item_key):
   item  = OmegaConf.select(config, item_key)
   inherit_src = item.get('inherit',None)
@@ -57,7 +59,6 @@ def get_absolute_config(config, item_key):
     return OmegaConf.merge(inherit_item, item)
   else:
     return item
-
 
 def check_parameter(base_yaml,extend_yaml=None):
     def wrapper(func):
@@ -70,7 +71,7 @@ def check_parameter(base_yaml,extend_yaml=None):
             config = get_absolute_config(base_conf, func.__name__)
             for k in kwargs:
                 if k not in config:
-                  raise TypeError
+                  raise TypeError("Invalid paramter {}".format(k))
                 config[k] = kwargs[k]
             return func(*args, config)
         return innerwrapper
@@ -78,3 +79,10 @@ def check_parameter(base_yaml,extend_yaml=None):
 
 def depict_config(cfg):
   print(OmegaConf.to_yaml(cfg))
+
+def set_dir(model_path):
+  dirname = os.path.dirname(model_path)
+  p = Path(dirname)
+  if not p.is_dir():
+    p.mkdir(parents=True)
+

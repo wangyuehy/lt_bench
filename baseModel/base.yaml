@@ -3,66 +3,90 @@ loadNet:
   model_type: resnet18
   backbone: null
   mode: single
-  # model: single/full
+  # mode: single/full
 
+version: 1
 
 infer:
   infer_type: trt
   input_shape: null
 
-  # infer_type: trt/onnx/torch
 build_engine:
   engine_type: trt
   
-
-
+####################################
 torch:
-  return_path: false
-
-  
-build_torch:
-  model_path: null
-  batch_size: -1
-  version: 1
-  verbose: false
   model_path: null
   load_pretrained: true
   pretrained:
     model_path: null
-
+  verbose: false
+  return_path: null
+  
+build_torch:
+  model_path: null
+  verbose: false
 
 ####################################
 onnx:
-  return_path: false
-  input_shape: 
-    - 3
-    - 224
-    - 224
-  batch_size: -1
-  version: 1
-  opset_version: 11
+  model_path: null
+  load_pretrained: true
+  inherit: build_onnx
   verbose: false
+  pretrained:
+    model_path: null
+    inherit: Is_Pretrained_Onnx_Matched
+
+Is_Pretrained_Onnx_Matched:
+  input_shape: null
+  batch_size: -1
+  opset_version: 11
 
 
 build_onnx:
-  model_path: null
-  input_shape: ${onnx.input_shape}
-  batch_size: ${onnx.batch_size}
-  version: 1
+  torch_model_path: null
+  onnx_model_path: ???
+  batch_size: ???
+  input_shape: ???
   opset_version: 11
   verbose: false
 
+####################################
 trt:
+  model_path: null
+  load_pretrained: true
   return_path: false
+  verbose: false
+  inherit: build_trt_engine
+  pretrained:
+    model_path: null
+    inherit: Is_Pretrained_Trt_Matched
+    batch_size: -1
+    input_shape: null
+    precision: int8
 
+Is_Pretrained_Trt_Matched:
+  input_shape: null
+  batch_size: -1
+  precision: int8
+
+build_trt_engine:
+  onnx_model_path:
+  trt_model_path:
+  input_shape:
+  batch_size:
+  precision:
+  max_workspace_size:
+  calib_cache:
+  calibrator:
+  engine_model_path:
 
   
-
+####################################
 
 preprocess:
-  pass
+  batch_size: -1
 
 postprocess:
-  postprocess
-
+  batch_size: -1
   

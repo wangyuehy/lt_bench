@@ -5,17 +5,21 @@
 #debug: false
 #return_path: false
 
-resnet18_src_path: cv/classification/resnet18
-resnet18_build_path: null
+rel_path: cv/classification/resnet18/resnet18_torch
+ModelZoo_path: /workspace/public/basemodel/${rel_path}
+SrcCode_path: ${rel_path}
+Build_path: build/${rel_path}
 
-build_torch:
-  pretrained:
-    model_path: ${resnet18_src_path}/resnet18.pth
-  model_path: null
-  load_pretrained: true
 
 torch:
   inherit: build_torch
+
+build_torch:
+  pretrained:
+    model_path: ${ModelZoo_path}/resnet18-5c106cde.pth
+  model_path: null
+  verbose: true
+
 
 
 
@@ -37,7 +41,7 @@ build_onnx:
       - 224
     
 onnx:
-  inherit: _build_onnx
+  inherit: build_onnx
 
 
   

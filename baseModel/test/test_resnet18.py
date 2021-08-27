@@ -28,21 +28,19 @@ def test_get_abs_config():
 
 def test_resnet18_torch():
   model = base.loadNet(task='classification',model_type='resnet18')()
-  #from cv.classification.resnet18.resnet18 import model
-  pdb.set_trace()
-  net = model.torch(load_pretrained=False)
-  pdb.set_trace()
-  net = model.torch(return_path=True)
+  
+  net = model.torch()
+  net = model.torch(return_path="build/restnet18.pth")
 
   
 def test_resnet18_onnx():
-  model = base.loadNet(task='classification',model='resnet18')
-  pdb.set_trace()
-  net = model.onnnx()
-  net = model.torch(return_path=true)
+  model = base.loadNet(task='classification',model_type='resnet18')()
+  net = model.onnx()
+  net = model.torch(return_path="build/restnet18.onnx")
   net = model.torch(input_shape=[3,300,300],batch_size=16)
 
 
 if __name__ == '__main__':
-  test_resnet18_torch()
+  #test_resnet18_torch()
+  test_resnet18_onnx()
   #test_get_abs_config()

@@ -1,52 +1,37 @@
 import torch
 import torchvision.models
 from common.util import depict_config,logging
-from base import baseModel,check_class_parameter,trtmodel, cvOnnxModel, torchmodel
+from base import baseModel,check_class_parameter
 import onnx
-from cv.classification.resnet18.trt_build import preprocess_classification
+from cv.classification.trt_build import preprocess_classification
 from omegaconf import OmegaConf
 
 
 Build_engine_params = []
 
 
-class model(baseModel):
+class classification(baseModel):
   
   def __init__(self):
-    
-    self.extend_yaml = 'cv/classification/resnet18/resnet18.yaml'
-    super(model,self).__init__()
-    self.torchmodel = torchmodel()
-    self.onnxmodel = cvOnnxModel()
-    self.trtmodel = trtmodel()
-    #self.config = OmegaConf.merge(OmegaConf.load(self.base_yaml), OmegaConf.load(self.extend_yaml))
+    super(classification,self).__init__()
+   
   ############ torch ################
-  
   @check_class_parameter
   def build_torch(self,cfg):
-    # default model_path defined in yamls
     model = torchvision.models.resnet18()
     if cfg.model_path:
-      model.load_state_dict(torch.load(cfg.model_path))
-    elif cfg.load_pretrained:
-      model.load_state_dict(torch.load(cfg.pretrained.model_path))
-    else:
-      logging.warning("Doesn't load any weight for resnet18")
-    self.torchmodel.set(model, cfg.pretrained.model_path)
+      model.load_state_dict(cfg.model_path)
+    return model
 
   ############ onnx ################
   @check_class_parameter
   def build_onnx(self, cfg):
     if cfg.verbose:
       depict_config(cfg)
-    # if defined cfg.torch_model_path, load it, if not, load from modelzoo
     pytorch_model = self.torch(model_path=cfg.torch_model_path)
     dummy_input = torch.randn([cfg.batch_size].extend(cfg.input_shape))
-    torch.onnx.export(pytorch_model, dummy_input, cfg.onnx_model_path,verbose=cfg.verbose)
-    self.onnxmodel = cvOnnxModel(batch_size=cfg.batch_size, input_shape=input_shape)
-    
-
-
+    torch.onnx.export(pytorch_model, dummy_input, cfg.onnx_model_path,verbose=cfg.verbose,opset_version=cfg.opset_version)
+    return cfg.onnx_model_path
 
   ############ engine ################
   @check_class_parameter
@@ -58,15 +43,12 @@ class model(baseModel):
     if calibrator == 'simple':
       calibrator_func = classificationEntropyCalibrator
 
-    trt_build.build_engine(onnx_file_path, engine_file_path=cfg.engine_model_path, batch_size=cfg.batch_size, \
+    trt_build.build_engine(onnx_file_path, engine_file_path=cfg.trt_model_path, batch_size=cfg.batch_size, \
       input_shape=cfg.input_shape, precision=cfg.precision, max_workspace_size=cfg.max_workspace_size, calib_cache=cfg.calib_cache,\
         calibrator=calibrator_func)
 
- 
-
 
   def preprocess(self, cfg):
-
     input_shape = dict_get(kwargs, 'input_shape', default=(3,224,224))
     mean = dict_get(kwargs, 'mean', default=[0.485, 0.456, 0.406])
     std = dict_get(kwargs,'std', default=[0.229, 0.224, 0.225])

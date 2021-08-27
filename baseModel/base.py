@@ -1,32 +1,19 @@
-from common.util import dict_get,logging, printItem, check_parameter,get_absolute_config
+from common.util import dict_get,logging, printItem, check_parameter,get_absolute_config, set_dir
 from importlib import import_module
+import os
 from datazoo import getDataDir
 from omegaconf import OmegaConf, DictConfig
+from register import modeldict
+import copy
 import pdb
-
-modeldict={
-  'classification':{
-    'resnet18':"cv.classification.resnet18.resnet18",
-    #'resnet101':'CV.classification.resnet101',
-  },
-  "object_detection":{
-    'yolov3':{
-      'resnet18':"cv.object_detection.yolov3.resnet18",
-      #'resnet101':'CV.object_detection.yolov3.resnet101'
-    }
-  },
-  "segmentation":{
-
-  },
-  "NLP":{
-
-  }
-}
-
+import tensorrt as trt
+import torch
+from abc import ABC, abstractmethod, abstractstaticmethod
+TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
 
 def check_class_parameter(func):
   def wrapper(class_instance, *args, **kwargs):
-    base_conf = class_instance.config
+    base_conf = copy.deepcopy(class_instance.config)
     config = get_absolute_config(base_conf, func.__name__)
     for k in kwargs:
       if k not in config:
@@ -38,14 +25,13 @@ def check_class_parameter(func):
     return func(class_instance,*args,config)
   return wrapper
  
-
 def avaliableNet():
   '''
     return avaliable net list
   '''
   printItem(modeldict)
 
-@check_parameter(base_yaml='base.yaml')
+@check_parameter(base_yaml=os.path.join(os.path.dirname(__file__), 'base.yaml'))
 def loadNet(cfg):
   '''
     Function:
@@ -85,54 +71,10 @@ def loadNet(cfg):
   else:
     logging.error("Invalid task: {}".format(task))
 
-class torchmodel:
-  def __init__(self,model=None, model_path=None):
-    self.set(model, model_path)
-  
-  def __call__(self, cfg):
-    if cfg.model_path:
-      return None
-    elif self.model:
-      return self
-    else:
-      return None 
-  def set(self,model,model_path):
-    self.model = model
-    self.model_path = model_path
-
-class trtmodel:
-  def __init__(self, model=None, model_path=None):
-    self.model = model
-    self.model_path = model_path
-
-  def __call__(sel, **args):
-    pass
-class cvOnnxModel:
-  def __init__(self,input_shape=[3,224,224], batch_size=-1, model_path=None,opset_version=11 ):
-    self.input_shape = input_shape
-    self.batch = batch_size
-    self.model_path = model_path
-    if self.model_path:
-      self.model = onnx.load(self.model_path)
-    else:
-      self.model = None
-    self.opset_version = opset_version
-
-  def __call__(self, **args):
-    input_shape = dict_get(args, 'input_shape', default=None)
-    batch_size = dict_get(args, 'batch_size', default=None)
-    opset_version = dict_get(args, 'opset_version', default=11)
-    if shape != self.input_shape or batch != self.batch or opset_version != self.opset_version:
-      return None
-    return self
-
-class baseModel(object):
+class baseModel(ABC):
   def __init__(self):
-    self.torchmodel = None # key : shape, batch, model, model_path
-    self.onnxmodel = None  #onnxmodel()  #{shape=3x320x320,  batch=1, model_path='///xd//x', model=onnx.load(model_path) }
-    self.trtmodel = None # {shape=3x320x320,  batch=1, model_path='///xd//x', precesion=int8}
     self.batch_size = -1
-    self.base_yaml = 'base.yaml'
+    self.base_yaml = os.path.join(os.path.dirname(__file__), 'base.yaml')
     try:
       if self.extend_yaml:
         self.config = OmegaConf.merge(OmegaConf.load(self.base_yaml), OmegaConf.load(self.extend_yaml))
@@ -141,7 +83,6 @@ class baseModel(object):
     except AttributeError as e:
       logging.error('extend_yaml not defined')
       raise AttributeError('extend_yaml not defined')
-
 
   def train(self,args):
     pass
@@ -161,64 +102,110 @@ class baseModel(object):
   @check_class_parameter
   def build_engine(self,cfg):
     engine_type = cfg.engine_type
-    #force_generate=False,return_path=False, precison='fp16', batch_size=-1, engine_type='trt', ):
-    #engine_type = dict_get(kwargs, "engine_type", default='trt')
     if engine_type =='trt':
       self._build_trt_engine(return_path=False, precison='fp16', batch_size=-1)
     else:
       logging.log('invalid trt type {}'.format(engine_type))
 
+  @abstractmethod
   def build_trt_engine(self,cfg):
     pass
+
+  @abstractmethod
   def preprocess(self,args):
-    # parser whole folder
     pass
 
+  @abstractmethod
   def preprocess_one(self, cfg):
-    # parse one batch, return numpy.array 
     pass
-
+  @abstractmethod
   def postprocess(self,args):
     pass
 
   @check_class_parameter
   def torch(self, cfg):
-    if self.torchmodel(cfg):
-      pass
-    else:
-      self.build_torch(cfg)
-    if cfg.return_path:
-      return self.trochmodel.model, self.torchmodel.model_path
-    else:
-      return self.torchmodel.model
+    if not cfg.model_path and cfg.load_pretrained:
+      cfg.model_path = cfg.pretrained.model_path
+    model = self.build_torch(cfg,model_path=cfg.model_path)
 
+    if cfg.return_path:
+      set_dir(cfg.return_path)
+      torch.save(model.state_dict(), cfg.return_path)
+      return model, cfg.return_path
+    else:
+      return model
+  
+  @check_class_parameter
   def onnx(self, cfg):
-    if not self.onnxmodel(cfg):
-      self._build_onnx(cfg)
-    if cfg.return_path:
-      return self.onnxmodel.model, self.onnxmodel.model_path
+    if cfg.model_path:
+      pass
+    elif cfg.load_pretrained and self.Is_Pretrained_Onnx_Matched(cfg):
+      cfg.model_path = cfg.pretrained.model_path
     else:
-      return self.onnxmodel.model
+      if cfg.return_path:
+        cfg.onnx_model_path = cfg.return_path
+      cfg.model_path = self.build_onnx(cfg)
+    model = onnx.load(cfg.model_path)
 
+    if cfg.return_path:
+      if cfg.return_path != cfg.model_path:
+        set_dir(cfg.return_path)
+        os.system('cp {} {}'.format(cfg.model_path, cfg.return_path))
+      return model, cfg.return_path
+    else:
+      return model
+
+  @check_class_parameter
+  def Is_Pretrained_Onnx_Matched(self, cfg):
+    if cfg.input_shape != cfg.pretrained.input_shape or \
+      cfg.batch_size != cfg.pretrained.batch_size or \
+        cfg.opset_version != cfg.pretrained.opset_version:
+      return False
+    else:
+      return True
+
+  @check_class_parameter
   def trt(self, cfg):
-    if not self.trtmodel(cfg):
-      self.build_trt_engine(cfg)
-    if cfg.return_path:
-      return self.trtmodel.model, self.trtmodel.model_path
+    if not cfg.model_path:
+      pass
+    elif cfg.load_pretrained and self.Is_Pretrained_Trt_Matched(cfg):
+      cfg.model_path = cfg.pretrained.model_path
     else:
-      return self.trtmodel.model
+      if cfg.return_path:
+        cfg.trt_model_path = cfg.return_path
+      cfg.model_path = self.build_trt_engine(cfg)
+    
+    with open(cfg.model_path, "rb") as f, trt.Runtime(TRT_LOGGER) as runtime:
+      model = runtime.deserialize_cuda_engine(f.read())
 
+    if cfg.return_path:
+      if cfg.return_path != cfg.model_path:
+        set_dir(cfg.return_path)
+        os.system('cp {} {}'.format(cfg.model_path, cfg.return_path))
+      return model,cfg.model_path
+    else:
+      return model 
+
+  @check_class_parameter
+  def Is_Pretrained_Trt_Matched(self,cfg):
+    if cfg.input_shape != cfg.pretrained.input_shape or \
+      cfg.batch_size != cfg.pretrained.batch_size or \
+        cfg.precision != cfg.pretrained.precision:
+      return False
+    else:
+      return True
+  @abstractmethod
   def build_torch(self,cfg):
     pass
-
+  @abstractmethod
   def build_onnx(self,cfg):
     pass
-
+  @abstractmethod
   def trt_infer(self,cfg):
     pass
-
+  @abstractmethod
   def onnx_infer(self,cfg):
     pass
-
+  @abstractmethod
   def torch_infer(self,cfg):
     pass

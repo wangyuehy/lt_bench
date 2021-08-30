@@ -1,4 +1,6 @@
 baseModel/test/
+baseModel/build/
+baseModel/.vscode
 *.pyc
 *.pyo
 baseModel/__pycache__/

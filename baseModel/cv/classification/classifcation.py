@@ -1,9 +1,9 @@
 import torch
 import torchvision.models
-from common.util import depict_config,logging
+from common.util import depict_config,logging,set_file_dir
 from base import baseModel,check_class_parameter
 import onnx
-from cv.classification.trt_build import preprocess_classification
+from cv.classification.trt_build import preprocess_imagenet_data
 from omegaconf import OmegaConf
 
 
@@ -20,7 +20,7 @@ class classification(baseModel):
   def build_torch(self,cfg):
     model = torchvision.models.resnet18()
     if cfg.model_path:
-      model.load_state_dict(cfg.model_path)
+      model.load_state_dict(torch.load(cfg.model_path))
     return model
 
   ############ onnx ################
@@ -28,9 +28,22 @@ class classification(baseModel):
   def build_onnx(self, cfg):
     if cfg.verbose:
       depict_config(cfg)
+    set_file_dir(cfg.onnx_model_path)
     pytorch_model = self.torch(model_path=cfg.torch_model_path)
-    dummy_input = torch.randn([cfg.batch_size].extend(cfg.input_shape))
-    torch.onnx.export(pytorch_model, dummy_input, cfg.onnx_model_path,verbose=cfg.verbose,opset_version=cfg.opset_version)
+    if cfg.batch_size > 0:
+      dummy_input = torch.randn([cfg.batch_size, cfg.input_shape[0], cfg.input_shape[1], cfg.input_shape[2]])
+      torch.onnx.export(pytorch_model, dummy_input, cfg.onnx_model_path,verbose=cfg.verbose,opset_version=cfg.opset_version)
+    else:
+      dummy_input = torch.randn([1, cfg.input_shape[0], cfg.input_shape[1], cfg.input_shape[2]] )
+      torch.onnx.export(
+        pytorch_model, dummy_input, cfg.onnx_model_path,  
+        opset_version=cfg.opset_version,verbose=cfg.verbose, 
+        input_names=['input'], output_names= ['output'],
+        dynamic_axes={'input':{0:'batch_size'},
+                      'output':{0:'batch_size'}}
+      )
+    if cfg.verbose:
+      logging.info('build onnx to {}'.format(cfg.onnx_model_path))
     return cfg.onnx_model_path
 
   ############ engine ################
@@ -47,22 +60,13 @@ class classification(baseModel):
       input_shape=cfg.input_shape, precision=cfg.precision, max_workspace_size=cfg.max_workspace_size, calib_cache=cfg.calib_cache,\
         calibrator=calibrator_func)
 
-
-  def preprocess(self, cfg):
-    input_shape = dict_get(kwargs, 'input_shape', default=(3,224,224))
-    mean = dict_get(kwargs, 'mean', default=[0.485, 0.456, 0.406])
-    std = dict_get(kwargs,'std', default=[0.229, 0.224, 0.225])
-    build_dir = dict_get(kwargs,'build_dir', default=None)
-    source_dir = dict_get(kwargs, 'source_dir', default=None)
-    source_file = dict_get(kwargs, 'source_file', default=None)
-    if not build_dir:
-      build_dir = self.preprocess_data_dir
-    if not cfg.build_dir:
-      build_dir = cfg.preprocess_data_dir
-    preprocess_classification(source_dir=cfg.source_file)
-    preprocess_classification(source_dir=source_dir, source_file=source_file,\
-      build_dir=build_dir, mean=mean, std=std,input_shape=input_shape)
+  @check_class_parameter
+  def preprocess_one(self, cfg):
+  
+    return preprocess_imagenet_data(cfg.source_name, cfg.input_shape, cfg.mean, cfg.std)
 
 
+  def postprocess(self,cfg):
+    pass
  
 

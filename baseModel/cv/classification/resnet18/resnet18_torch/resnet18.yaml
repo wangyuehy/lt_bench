@@ -10,40 +10,41 @@ ModelZoo_path: /workspace/public/basemodel/${rel_path}
 SrcCode_path: ${rel_path}
 Build_path: build/${rel_path}
 
-
+####################################
 torch:
   inherit: build_torch
-
-build_torch:
   pretrained:
     model_path: ${ModelZoo_path}/resnet18-5c106cde.pth
+
+
+build_torch:
   model_path: null
-  verbose: true
+  verbose: false
 
 
-
-
-build_onnx:
-  load_pretrained: true
-  torch_model_path: null
-  input_shape: 
-    - 3
-    - 224
-    - 224
-  batch_size: -1
-  onnx_model_path: build/cv/classification/resnet
+####################################
+onnx:
   pretrained:
-    model_path: cv/classification/resnet18/resnet18.onnx
-    batch_size: -1
+    model_path: ${ModelZoo_path}/resnet18_3x224x224_b0.onnx
     input_shape:
       - 3
       - 224
       - 224
-    
-onnx:
-  inherit: build_onnx
+    batch_size: -1
+    opset_version: 11
+  return_path: null
 
+build_onnx:
+  verbose: false
+  torch_model_path: null
+  batch_size: -1
+  input_shape:
+    - 3
+    - 224
+    - 224
+  onnx_model_path: ${Build_path}/resnet18_3x224x224_b0.onnx
 
+####################################
   
 build_trt:
   precison: fp32
@@ -58,3 +59,22 @@ build_trt:
   calibrator: simple
   preprocess_func: prefocess
 
+preprocess:
+  dst_dir: ${Build_path}/preprocessed/
+  source_dir: null
+  source_file: null
+
+preprocess_one:
+  batch_size: -1
+  input_shape:
+    - 3
+    - 224
+    - 224
+  mean: 
+    - 0.485 
+    - 0.456 
+    - 0.406
+  std:
+    - 0.229
+    - 0.224
+    - 0.225

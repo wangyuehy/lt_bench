@@ -1,4 +1,4 @@
-from common.util import dict_get,logging, printItem, check_parameter,get_absolute_config, set_dir
+from common.util import dict_get,logging, printItem, check_parameter,get_absolute_config, set_dir,set_file_dir
 from importlib import import_module
 import os
 from datazoo import getDataDir
@@ -8,6 +8,8 @@ import copy
 import pdb
 import tensorrt as trt
 import torch
+import onnx
+import numpy as np
 from abc import ABC, abstractmethod, abstractstaticmethod
 TRT_LOGGER = trt.Logger(trt.Logger.WARNING)
 
@@ -111,9 +113,36 @@ class baseModel(ABC):
   def build_trt_engine(self,cfg):
     pass
 
-  @abstractmethod
-  def preprocess(self,args):
-    pass
+  @check_class_parameter
+  def preprocess(self,cfg):
+
+    if os.path.exists(cfg.dst_dir) and not cfg.force_preprocess:
+      return
+    else:
+      set_dir(cfg.dst_dir)
+      if not os.path.exists(cfg.source_dir):
+        logging.error('source dir does not exists {}'.format(cfg.source_dir))
+      filelist = []
+      if cfg.source_file:
+        if not os.path.exists(cfg.source_file):
+          logging.error('source file does not exists {}'.format(cfg.source_file))
+        with open(cfg.source_file, 'r') as f:
+          for line in f.readlines():
+            filename = line.strip().split()[0]
+            if filename:
+              filelist.append(filename)
+      else:
+        filelist = os.listdir(cfg.source_dir)
+      
+      for basename in filelist:
+        srcname = os.path.join(cfg.source_dir, basename)
+        preprocessed_name = os.path.join(cfg.dst_dir, basename)+'.npy'
+        cfg.source_name = srcname
+        preprocessed_data = self.preprocess_one(cfg)
+        np.save(preprocessed_name, preprocessed_data)
+        if cfg.verbose:
+          logging.info('build data from {} to {}'.format(srcname, preprocessed_name))
+      return 
 
   @abstractmethod
   def preprocess_one(self, cfg):
@@ -129,7 +158,7 @@ class baseModel(ABC):
     model = self.build_torch(cfg,model_path=cfg.model_path)
 
     if cfg.return_path:
-      set_dir(cfg.return_path)
+      set_file_dir(cfg.return_path)
       torch.save(model.state_dict(), cfg.return_path)
       return model, cfg.return_path
     else:
@@ -149,7 +178,7 @@ class baseModel(ABC):
 
     if cfg.return_path:
       if cfg.return_path != cfg.model_path:
-        set_dir(cfg.return_path)
+        set_file_dir(cfg.return_path)
         os.system('cp {} {}'.format(cfg.model_path, cfg.return_path))
       return model, cfg.return_path
     else:
@@ -180,7 +209,7 @@ class baseModel(ABC):
 
     if cfg.return_path:
       if cfg.return_path != cfg.model_path:
-        set_dir(cfg.return_path)
+        set_file_dir(cfg.return_path)
         os.system('cp {} {}'.format(cfg.model_path, cfg.return_path))
       return model,cfg.model_path
     else:
@@ -200,12 +229,12 @@ class baseModel(ABC):
   @abstractmethod
   def build_onnx(self,cfg):
     pass
-  @abstractmethod
+  #@abstractmethod
   def trt_infer(self,cfg):
     pass
-  @abstractmethod
+  #@abstractmethod
   def onnx_infer(self,cfg):
     pass
-  @abstractmethod
+  #@abstractmethod
   def torch_infer(self,cfg):
     pass

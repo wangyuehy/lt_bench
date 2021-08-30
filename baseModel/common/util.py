@@ -81,8 +81,13 @@ def depict_config(cfg):
   print(OmegaConf.to_yaml(cfg))
 
 def set_dir(model_path):
+  #dirname = os.path.dirname(model_path)
+  p = Path(model_path)
+  if not p.is_dir():
+    p.mkdir(parents=True)
+
+def set_file_dir(model_path):
   dirname = os.path.dirname(model_path)
   p = Path(dirname)
   if not p.is_dir():
     p.mkdir(parents=True)
-

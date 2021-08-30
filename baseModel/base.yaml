@@ -33,6 +33,7 @@ onnx:
   load_pretrained: true
   inherit: build_onnx
   verbose: false
+  return_path: null
   pretrained:
     model_path: null
     inherit: Is_Pretrained_Onnx_Matched
@@ -85,8 +86,17 @@ build_trt_engine:
 ####################################
 
 preprocess:
-  batch_size: -1
+  inherit: preprocess_one
+  dst_dir: ???
+  source_dir: null
+  source_file: null
+  force_preprocess: false
+  verbose: false
+  
+preprocess_one:
+  source_name: null
 
+  
 postprocess:
   batch_size: -1
   

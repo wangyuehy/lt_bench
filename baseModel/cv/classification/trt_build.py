@@ -22,24 +22,25 @@ def resize_with_aspectratio(img, out_height, out_width, scale=87.5):
     img = cv2.resize(img, (w, h), interpolation=cv2.INTER_AREA)
     return img
 
-def preprocess_imagenet_data(imgname, input_shape, mean, std):
-  target_h, target_w = input_shape[1], input_shape[2]
+def preprocess_imagenet_data(imgname, target_shape, mean, std):
+  target_h, target_w = target_shape[1], target_shape[2]
+
   image = cv2.imread(imgname)
   image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
   image = resize_with_aspectratio(image, target_h, target_w)
-  #image = center_crop(image, target_h, target_w)
-  image = np.asarray(image, dtype='float32')
 
+  image = np.asarray(image, dtype=np.float32)
   means = np.array(mean, dtype=np.float32)
 
   image = image.transpose([2, 0, 1])
-  
   mean_vec = np.array(mean)
   std_vec = np.array(std)
+  
+  img_data = np.asarray(image).astype(np.float32)
 
   for i in range(img_data.shape[0]):
     # Scale each pixel to [0, 1] and normalize per channel.
-    img_data[i, :, :] = (image[i, :, :] / 255 - mean_vec[i]) / stddev_vec[i]
+    img_data[i, :, :] = (image[i, :, :] / 255 - mean_vec[i]) / std_vec[i]
 
   return img_data
 

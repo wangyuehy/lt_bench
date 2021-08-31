@@ -31,12 +31,20 @@ build_torch:
 onnx:
   model_path: null
   load_pretrained: true
-  inherit: build_onnx
   verbose: false
   return_path: null
   pretrained:
     model_path: null
-    inherit: Is_Pretrained_Onnx_Matched
+    input_shape: null
+    batch_size: -1
+    opset_version: 11
+  # below for build_onnx
+  torch_model_path: null
+  onnx_model_path: ???
+  batch_size: ???
+  input_shape: ???
+  opset_version: 11
+
 
 Is_Pretrained_Onnx_Matched:
   input_shape: null
@@ -60,11 +68,34 @@ trt:
   verbose: false
   inherit: build_trt_engine
   pretrained:
-    model_path: null
-    inherit: Is_Pretrained_Trt_Matched
-    batch_size: -1
-    input_shape: null
-    precision: int8
+    fp16:
+      model_path: null
+      batch_size: -1
+      input_shape: null
+      precision: fp16
+    int8:
+      model_path: null
+      batch_size: -1
+      input_shape: null
+      precision: int8
+    fp32:
+      model_path: null
+      batch_size: -1
+      input_shape: null
+      precision: fp32
+    
+  # below for build_trt_engine
+  onnx_model_path: null
+  trt_model_path: null
+  input_shape: null
+  batch_size: null
+  precision: int8
+  max_workspace_size: 1<<31
+  calibrate_cache: null
+  calibrator: null
+  max_batch_size: 32
+  calibrate_dir: null
+  source_dir: null
 
 Is_Pretrained_Trt_Matched:
   input_shape: null
@@ -72,27 +103,30 @@ Is_Pretrained_Trt_Matched:
   precision: int8
 
 build_trt_engine:
-  onnx_model_path:
-  trt_model_path:
-  input_shape:
-  batch_size:
-  precision:
-  max_workspace_size:
-  calib_cache:
-  calibrator:
-  engine_model_path:
+  onnx_model_path: null
+  trt_model_path: null
+  input_shape: null
+  batch_size: null
+  precision: int8
+  max_workspace_size: 1<<31
+  max_batch_size: 32
+  # below for int8 calibrator
+  calibrator: null
+  calibrate_cache: null
+  calibrate_dir: null
+  source_dir: null
+
 
   
 ####################################
 
 preprocess:
-  inherit: preprocess_one
   dst_dir: ???
   source_dir: null
   source_file: null
   force_preprocess: false
   verbose: false
-  
+
 preprocess_one:
   source_name: null
 

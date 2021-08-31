@@ -198,7 +198,7 @@ class baseModel(ABC):
     if not cfg.model_path:
       pass
     elif cfg.load_pretrained and self.Is_Pretrained_Trt_Matched(cfg):
-      cfg.model_path = cfg.pretrained.model_path
+      cfg.model_path = cfg['pretrained'][cfg.precision]['model_path']
     else:
       if cfg.return_path:
         cfg.trt_model_path = cfg.return_path
@@ -217,9 +217,10 @@ class baseModel(ABC):
 
   @check_class_parameter
   def Is_Pretrained_Trt_Matched(self,cfg):
-    if cfg.input_shape != cfg.pretrained.input_shape or \
-      cfg.batch_size != cfg.pretrained.batch_size or \
-        cfg.precision != cfg.pretrained.precision:
+    pretrained_cfg = cfg.pretrained[cfg.precision]
+    if cfg.input_shape != pretrained_cfg.input_shape or \
+      cfg.batch_size != pretrained_cfg.batch_size or \
+        cfg.precision != pretrained_cfg.precision:
       return False
     else:
       return True

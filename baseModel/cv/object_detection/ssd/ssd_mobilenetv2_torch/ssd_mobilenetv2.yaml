@@ -1,0 +1,71 @@
+rel_path: cv/object_detection/ssd/ssd_mobilenetv2_torch
+Build_path: build/${rel_path}
+
+####################################
+torch:
+  model_path: ${rel_path}/ssd_mobilenetv2_CBR_512_200e_coco_epoch_200.pth
+  model_cfg: ${rel_path}/ssd_mobilenetv2_CBR_512_200e_coco.py
+  pretrained:
+    model_path: ${rel_path}/ssd_mobilenetv2_CBR_512_200e_coco_epoch_200.pth
+
+build_torch:
+  model_path: ${rel_path}/ssd_mobilenetv2_CBR_512_200e_coco_epoch_200.pth
+  model_cfg: ${rel_path}/ssd_mobilenetv2_CBR_512_200e_coco.py
+  verbose: true
+
+####################################    
+onnx:
+  pretrained:
+    model_path: ${rel_path}/ssd_mobilenetv2_3x512x512_dynamicbatch.onnx
+    input_shape:
+      - 3
+      - 512
+      - 512
+    batch_size: -1
+    opset_version: 11
+    return_path: null
+
+build_onnx:
+  verbose: false
+  torch_model_path: null
+  input_shape: 
+    - 3
+    - 512
+    - 512
+  batch_size: -1
+  onnx_model_path: ${Build_path}/ssd_mobilenetv2_3x512x512_dynamicbatch.onnx
+ 
+ ####################################
+
+build_trt:
+  input_shape: 3x512x512
+  batch_size: -1
+  precison: fp32
+  onnx_model_path: ${rel_path}/ssd_mobilenetv2.onnx  
+  engine_path: ${rel_path}/ssd_mobilenetv2.trt
+  calibrate_style: simple
+  calibration_data: data/coco/images/val2017
+  max_calibration_size: 500  
+  calibration_batch_size: 32
+  calibration_cache_path: build/${rel_path}/calibration.cache
+  verbosity: info
+
+####################################
+preprocess:
+  dst_dir: ${Build_path}/preprocessed/
+  source_dir: data/coco/images/val2017
+  # source_file: null
+
+preprocess_one:
+  input_shape: 
+    - 3
+    - 512
+    - 512
+  mean: 
+    - 123.675
+    - 116.28
+    - 103.53
+  std:
+    - 1
+    - 1
+    - 1

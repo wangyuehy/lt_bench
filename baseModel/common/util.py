@@ -56,6 +56,8 @@ def get_absolute_config(config, item_key):
   inherit_src = item.get('inherit',None)
   if inherit_src:
     inherit_item = get_absolute_config(config, inherit_src)
+    if len(inherit_item.keys() & item.keys()) > 0:
+        raise RuntimeError(f'cannot inherit config from {inherit_src} to {item_key} with same keys {inherit_item.keys() & item.keys()}')
     return OmegaConf.merge(inherit_item, item)
   else:
     return item

@@ -3,6 +3,8 @@ import torchvision.models
 from common.util import depict_config,logging,set_file_dir
 from base import baseModel,check_class_parameter
 import onnx
+import os
+from cv.classification import trt_build
 from cv.classification.trt_build import preprocess_imagenet_data
 from omegaconf import OmegaConf
 
@@ -52,17 +54,28 @@ class classification(baseModel):
     if cfg.onnx_model_path:
       onnx_file_path = cfg.onnx_model_path
     else:
-      _,onnx_file_path = self.onnx(input_shape=cfg.input_shape,batch_size=cfg.batch_size, return_path=True)
-    if calibrator == 'simple':
-      calibrator_func = classificationEntropyCalibrator
+      _,onnx_file_path = self.onnx(input_shape=cfg.input_shape,batch_size=cfg.batch_size, return_path="build/cv/classification/tmp.onnx")
 
-    trt_build.build_engine(onnx_file_path, engine_file_path=cfg.trt_model_path, batch_size=cfg.batch_size, \
-      input_shape=cfg.input_shape, precision=cfg.precision, max_workspace_size=cfg.max_workspace_size, calib_cache=cfg.calib_cache,\
-        calibrator=calibrator_func)
+
+    # if force calibrate or the preprocess dir doesn't exists, do the preprocess
+    if cfg.precision == 'int8' and cfg.force_calibrate or not os.path.exists(cfg.calibrate_dir):
+      self.preprocess(dst_dir=cfg.calibrate_dir, source_dir=cfg.source_dir, force_preprocess=True)
+  
+    trt_build.build_engine(onnx_file_path, \
+        calibrate_dir=cfg.calibrate_dir, \
+        engine_file_path=cfg.trt_model_path, 
+        batch_size=cfg.batch_size, \
+        input_shape=cfg.input_shape, 
+        precision=cfg.precision, \
+        explicit_batch=cfg.explicit_batch, \
+        max_workspace_size=cfg.max_workspace_size, \
+        calib_cache=cfg.calibrate_cache,\
+        calibrator=cfg.calibrator, \
+        max_batch_size=cfg.max_batch_size)
+    return cfg.trt_model_path
 
   @check_class_parameter
   def preprocess_one(self, cfg):
-  
     return preprocess_imagenet_data(cfg.source_name, cfg.input_shape, cfg.mean, cfg.std)
 
 

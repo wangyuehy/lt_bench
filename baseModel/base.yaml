@@ -40,9 +40,9 @@ onnx:
     opset_version: 11
   # below for build_onnx
   torch_model_path: null
-  onnx_model_path: ???
-  batch_size: ???
-  input_shape: ???
+  onnx_model_path: null
+  batch_size: null
+  input_shape: null
   opset_version: 11
 
 
@@ -64,9 +64,8 @@ build_onnx:
 trt:
   model_path: null
   load_pretrained: true
-  return_path: false
+  return_path: null
   verbose: false
-  inherit: build_trt_engine
   pretrained:
     fp16:
       model_path: null
@@ -110,6 +109,7 @@ build_trt_engine:
   precision: int8
   max_workspace_size: 1<<31
   max_batch_size: 32
+  explicit_batch: true
   # below for int8 calibrator
   calibrator: null
   calibrate_cache: null

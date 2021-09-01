@@ -195,7 +195,7 @@ class baseModel(ABC):
 
   @check_class_parameter
   def trt(self, cfg):
-    if not cfg.model_path:
+    if  cfg.model_path:
       pass
     elif cfg.load_pretrained and self.Is_Pretrained_Trt_Matched(cfg):
       cfg.model_path = cfg['pretrained'][cfg.precision]['model_path']

@@ -55,20 +55,24 @@ class test_resnet18:
     net = self.model.build_onnx()
 
   def test_build_trt_engine(self):
-    net = self.model.build_trt_engine()
-    net = self.model.build_trt_engine(trt_engine_path='build/resnet18_trt_test_int8.engine', input_shape=(3,320,320),precision='int8')
-    net = self.model.build_trt_engine(trt_engine_path='build/resnet18_trt_test_fp16.engine', input_shape=(3,320,320),precision='fp16')
-  
+    source_dir = "build/preprocess/src"
+    net = self.model.build_trt_engine(source_dir=source_dir,precision='int8', trt_model_path='build/resnet18_int8.trt')
+ 
   def test_prerpocess(self):
-    
-    self.model.preprocess(source_dir='build/preprocess/src',dst_dir='build/preprocess/dst1')
+    self.model.preprocess(source_dir='build/preprocess/src',dst_dir='build/preprocess/dst123')
     self.model.preprocess(source_dir='build/preprocess/src',source_file='build/preprocess/valmap.txt')
     #self.model.preprocess(source_dir='build/preprocess/src')
+
+  def test_trt(self):
+    model = self.model.trt(input_shape=[3,224,224], batch_size=8, precision='int8')
+
 if __name__ == '__main__':
   #test_resnet18_torch()
   #test_resnet18_onnx()
   #test_resnet18().test_onnx()
   #test_resnet18().test_build_onnx()
-  #test_resnet18().test_build_trt()
-  test_resnet18().test_prerpocess()
+  #test_resnet18().test_prerpocess()
+  #test_resnet18().test_build_trt_engine()
+  test_resnet18().test_trt()
+  #test_resnet18().test_trt()
   #test_get_abs_config()

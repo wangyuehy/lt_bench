@@ -105,7 +105,7 @@ class baseModel(ABC):
   def build_engine(self,cfg):
     engine_type = cfg.engine_type
     if engine_type =='trt':
-      self._build_trt_engine(return_path=False, precison='fp16', batch_size=-1)
+      self.build_trt_engine(return_path=False, precison='fp16', batch_size=-1)
     else:
       logging.log('invalid trt type {}'.format(engine_type))
 

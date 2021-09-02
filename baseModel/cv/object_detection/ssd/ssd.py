@@ -3,6 +3,7 @@ import sys
 import os
 from functools import partial
 from abc import abstractmethod
+import copy
 
 import numpy as np
 import torch
@@ -32,7 +33,7 @@ class SSD(baseModel):
 
         # create dummy input, see mmdetection/mmdet/core/export/pytorch2onnx.py:generate_inputs_and_wrap_model
         one_img = torch.rand(3, *shape).requires_grad_() # torch.float32
-        (C, H, W) = (3, *shape)
+        C, H, W = shape[0], shape[1], shape[2]
         one_meta = {
             'img_shape': (H, W, C),
             'ori_shape': (H, W, C),
@@ -56,7 +57,7 @@ class SSD(baseModel):
         # export
         dynamic_axes = None if batchsize > 0 else {'input':{0}, 'dets':{0}, 'labels':{0}}
         torch.onnx.export(
-                self.torch_model,
+                torch_model,
                 batch_input,
                 save_path_,
                 input_names=['input'],
@@ -143,60 +144,58 @@ class SSD(baseModel):
         out_model_or_path = onnx_modifier.modify_onnx(input_model_or_path_, out_model_path=out_model_path)
         return out_model_or_path
 
-    def preprocess(self, cfg):
-        force_preprocess = cfg.get('force_preprocess', True)
-        input_shape = cfg.input_shape
-        mean_internel, std_internel = self.normalize_cfg
-        mean = cfg.get('mean', mean_internel)
-        std = cfg.get('std', std_internel)
-        source_dir = cfg.source_dir
-        source_file = cfg.source_file
-        build_dir = cfg.build_dir
-        if os.path.exists(build_dir) and not force_preprocess:
-            return
-        if not os.path.exists(build_dir):
-            os.makedirs(build_dir)
-        if not os.path.exists(source_dir):
-            logging.error('source dir not existed %s'%source_dir)
-        # get image file list
-        imglist = []
-        if os.path.exists(source_file):   
-            with open(source_file,'r') as f:
-                for line in f.readlines():
-                    imgname = line.strip()
-                    imglist.append(os.path.join(source_dir, imgname))
-        else:
-            for root, _, files in os.walk(source_dir):
-                imglist += [os.path.join(root, file) for file in files]
-        # read, process and save
-        ori_img = cfg.get('img', None)
-        for img in imglist:
-            cfg.img = img
-            preprocessed_data = self.preprocess_one(cfg)
-            preprocessed_name = os.path.join(build_dir, img)
-            np.save(preprocessed_name, preprocessed_data)
-        if ori_img:
-            cfg.img = ori_img
+    # def preprocess(self, cfg):
+    #     force_preprocess = cfg.get('force_preprocess', True)
+    #     input_shape = cfg.input_shape
+    #     mean_internel, std_internel = self.normalize_cfg
+    #     mean = cfg.get('mean', mean_internel)
+    #     std = cfg.get('std', std_internel)
+    #     source_dir = cfg.source_dir
+    #     source_file = cfg.source_file
+    #     build_dir = cfg.build_dir
+    #     if os.path.exists(build_dir) and not force_preprocess:
+    #         return
+    #     if not os.path.exists(build_dir):
+    #         os.makedirs(build_dir)
+    #     if not os.path.exists(source_dir):
+    #         logging.error('source dir not existed %s'%source_dir)
+    #     # get image file list
+    #     imglist = []
+    #     if os.path.exists(source_file):
+    #         with open(source_file,'r') as f:
+    #             for line in f.readlines():
+    #                 imgname = line.strip()
+    #                 imglist.append(os.path.join(source_dir, imgname))
+    #     else:
+    #         for root, _, files in os.walk(source_dir):
+    #             imglist += [os.path.join(root, file) for file in files]
+    #     # read, process and save
+    #     ori_img = cfg.get('img', None)
+    #     for img in imglist:
+    #         cfg.img = img
+    #         preprocessed_data = self.preprocess_one(cfg)
+    #         preprocessed_name = os.path.join(build_dir, img)
+    #         np.save(preprocessed_name, preprocessed_data)
+    #     if ori_img:
+    #         cfg.img = ori_img
 
-    @staticmethod
-    def preprocess_one(input, cfg):
+    def preprocess_one(self, cfg):
         """Pre-processing a image with resize and normalization, non inplace modification
-        image: imagepath or PIL.Image or 2D/3D np.array. If backend='PIL', input order is HWC-RGB; if backend='cv2', input order is HWC-BGR
+        img: imagepath or PIL.Image or 2D/3D np.array. If backend='PIL', input order is HWC-RGB; if backend='cv2', input order is HWC-BGR
         backend: 'PIL' or 'cv2'
         channels: int, desired number of channels, usually 1 or 3
-        height: int
-        width: int
+        input_shape: shape of object image, (channel, height, width)
         Returns:
             img_data: 3D np.array of fp32, the order is CHW-BGR
         """
-        img = cfg.img
+        img = cfg.source_name
         backend = cfg.get('backend', 'cv2')
         channels = cfg.get('channels', 3)
-        input_shape = cfg.get('input_shape', [224, 224])
+        input_shape = cfg.get('input_shape', [3, 224, 224])
         mean = cfg.get('mean', [123.675, 116.28, 103.53])
         std = cfg.get('std', [58.395, 57.12, 57.375])
-        height, width = input_shape[0], input_shape[1]
-        data = img.copy()
+        height, width = input_shape[1], input_shape[2]
+        data = copy.deepcopy(img)
         if backend == 'PIL':
             from PIL import Image
             if isinstance(data, str):
@@ -254,6 +253,9 @@ class SSD(baseModel):
             from mmdet.models import build_detector
             import mmcv
             cfg = mmcv.Config.fromfile(config_path)
+            import pickle
+            f = open('/home/jliu/data/debug/loadcfg1_my.pkl', 'wb')
+            pickle.dump(cfg.model, f)
             # import modules from string list.
             if cfg.get('custom_imports', None):
                 from mmcv.utils import import_modules_from_strings
@@ -266,6 +268,11 @@ class SSD(baseModel):
             # build the model
             cfg.model.train_cfg = None
             model = build_detector(cfg.model, test_cfg=cfg.get('test_cfg'))
+        import pickle
+        f = open('/home/jliu/data/debug/modelcfg1_my.pkl', 'wb')
+        pickle.dump(cfg.model, f)
+        f = open('/home/jliu/data/debug/model1_my.pkl', 'wb')
+        pickle.dump(model, f)
         # load checkpoint
         if checkpoint_path:
             from mmcv.runner import load_checkpoint

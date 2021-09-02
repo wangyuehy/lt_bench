@@ -21,12 +21,15 @@ class model(SSD):
     def build_trt_engine(self, cfg):
         return super().build_trt_engine(cfg)
 
-    def preprocess(self, cfg):
-        super().preprocess(cfg)
+    # @check_class_parameter
+    # def preprocess(self, cfg):
+    #     super().preprocess(cfg)
 
+    @check_class_parameter
     def preprocess_one(self, cfg):
-        super().preprocess_one(cfg)
+        return super().preprocess_one(cfg)
 
+    @check_class_parameter
     def postprocess(self, cfg):
         pass
 

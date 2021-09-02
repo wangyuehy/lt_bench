@@ -15,6 +15,15 @@ build_torch:
 
 ####################################    
 onnx:
+  model_path: ${Build_path}/ssd_mobilenetv2_3x512x512_dynamicbatch.onnx
+  torch_model_path: ${rel_path}/ssd_mobilenetv2_CBR_512_200e_coco_epoch_200.pth
+  input_shape: 
+    - 3
+    - 512
+    - 512
+  batch_size: -1
+  opset_version: 11
+  load_pretrained: true
   pretrained:
     model_path: ${rel_path}/ssd_mobilenetv2_3x512x512_dynamicbatch.onnx
     input_shape:
@@ -23,7 +32,8 @@ onnx:
       - 512
     batch_size: -1
     opset_version: 11
-    return_path: null
+  return_path: false
+
 
 build_onnx:
   verbose: false
@@ -53,10 +63,11 @@ build_trt:
 ####################################
 preprocess:
   dst_dir: ${Build_path}/preprocessed/
-  source_dir: data/coco/images/val2017
-  # source_file: null
+  source_dir: ../DataZoo/coco/val2017
+  force_preprocess: true
 
 preprocess_one:
+  source_name: ../DataZoo/coco/val2017/000000000139.jpg
   input_shape: 
     - 3
     - 512

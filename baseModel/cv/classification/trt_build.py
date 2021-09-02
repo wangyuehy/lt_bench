@@ -196,6 +196,17 @@ def create_optimization_profiles(builder, inputs, batch_sizes=[1,8,16,32,64], ma
 
     return list(profiles.values())
 
+def mark_outputs(network):
+    # Mark last layer's outputs if not already marked
+    # NOTE: This may not be correct in all cases
+    last_layer = network.get_layer(network.num_layers-1)
+    if not last_layer.num_outputs:
+        print("Last layer contains no outputs.")
+        return
+
+    for i in range(last_layer.num_outputs):
+        network.mark_output(last_layer.get_output(i))
+
 def add_profiles(config, inputs, opt_profiles):
   logging.debug("=== Optimization Profiles ===")
   for i, profile in enumerate(opt_profiles):

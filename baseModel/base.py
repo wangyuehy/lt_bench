@@ -115,11 +115,10 @@ class baseModel(ABC):
 
   @check_class_parameter
   def preprocess(self,cfg):
-
     if os.path.exists(cfg.dst_dir) and not cfg.force_preprocess:
+      logging.info(f'dst_dir={cfg.dst_dir} already exist')
       return
     else:
-      set_dir(cfg.dst_dir)
       if not os.path.exists(cfg.source_dir):
         logging.error('source dir does not exists {}'.format(cfg.source_dir))
       filelist = []
@@ -128,15 +127,23 @@ class baseModel(ABC):
           logging.error('source file does not exists {}'.format(cfg.source_file))
         with open(cfg.source_file, 'r') as f:
           for line in f.readlines():
-            filename = line.strip().split()[0]
-            if filename:
-              filelist.append(filename)
+            relpath = line.strip().split()[0]
+            if relpath:
+              filelist.append(relpath)
       else:
-        filelist = os.listdir(cfg.source_dir)
-      
-      for basename in filelist:
-        srcname = os.path.join(cfg.source_dir, basename)
-        preprocessed_name = os.path.join(cfg.dst_dir, basename)+'.npy'
+        # find files in source_dir recursively
+        for root, _, files in os.walk(cfg.source_dir):
+          startidx = root.find(cfg.source_dir) + len(cfg.source_dir) + 1
+          subdir = root[startidx:]
+          filelist += [os.path.join(subdir, file) for file in files]
+      # create dst_dir recursively
+      dst_dir_list = set([os.path.join(cfg.dst_dir, os.path.dirname(p)) for p in filelist])
+      for d in dst_dir_list:
+        set_dir(d)
+      logging.info(f'start to process {len(filelist)} images')
+      for relpath in filelist:
+        srcname = os.path.join(cfg.source_dir, relpath)
+        preprocessed_name = os.path.join(cfg.dst_dir, relpath)+'.npy'
         cfg.source_name = srcname
         preprocessed_data = self.preprocess_one(cfg)
         np.save(preprocessed_name, preprocessed_data)
@@ -166,21 +173,21 @@ class baseModel(ABC):
   
   @check_class_parameter
   def onnx(self, cfg):
-    if cfg.model_path:
-      pass
+    # if given onnx path, use the onnx model path
+    if not cfg.model_path:
+      raise ValueError('model path must be defined')
+    if os.path.isfile(cfg.model_path):
+      model_path = cfg.model_path
+    # if load_pretrained and input parameters are same, use the pretrained onnx
     elif cfg.load_pretrained and self.Is_Pretrained_Onnx_Matched(cfg):
-      cfg.model_path = cfg.pretrained.model_path
+      model_path = cfg.pretrained.model_path
     else:
-      if cfg.return_path:
-        cfg.onnx_model_path = cfg.return_path
-      cfg.model_path = self.build_onnx(cfg)
-    model = onnx.load(cfg.model_path)
-
+      # otherwise, build onnx model
+      cfg['onnx_model_path'] = cfg.model_path 
+      model_path = self.build_onnx(cfg)
+    model = onnx.load(model_path)
     if cfg.return_path:
-      if cfg.return_path != cfg.model_path:
-        set_file_dir(cfg.return_path)
-        os.system('cp {} {}'.format(cfg.model_path, cfg.return_path))
-      return model, cfg.return_path
+      return model, model_path
     else:
       return model
 

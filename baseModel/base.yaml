@@ -32,7 +32,7 @@ onnx:
   model_path: null
   load_pretrained: true
   verbose: false
-  return_path: null
+  return_path: true
   pretrained:
     model_path: null
     input_shape: null
@@ -40,7 +40,6 @@ onnx:
     opset_version: 11
   # below for build_onnx
   torch_model_path: null
-  onnx_model_path: null
   batch_size: null
   input_shape: null
   opset_version: 11

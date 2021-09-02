@@ -63,7 +63,7 @@ build_onnx:
 trt:
   model_path: null
   load_pretrained: true
-  return_path: null
+  return_path: false
   verbose: false
   pretrained:
     fp16:
@@ -84,7 +84,7 @@ trt:
     
   # below for build_trt_engine
   onnx_model_path: null
-  trt_model_path: null
+  #trt_model_path: null
   input_shape: null
   batch_size: null
   precision: int8

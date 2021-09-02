@@ -202,25 +202,26 @@ class baseModel(ABC):
 
   @check_class_parameter
   def trt(self, cfg):
-    if  cfg.model_path:
-      pass
+    if not cfg.model_path:
+      raise ValueError('model_path must be defined')
+    # if given model_path, load from it
+    if os.path.isfile(cfg.model_path):
+      model_path = cfg.model_path
     elif cfg.load_pretrained and self.Is_Pretrained_Trt_Matched(cfg):
-      cfg.model_path = cfg['pretrained'][cfg.precision]['model_path']
+      model_path = cfg['pretrained'][cfg.precision]['model_path']
     else:
-      if cfg.return_path:
-        cfg.trt_model_path = cfg.return_path
-      cfg.model_path = self.build_trt_engine(cfg)
-    
-    with open(cfg.model_path, "rb") as f, trt.Runtime(TRT_LOGGER) as runtime:
-      model = runtime.deserialize_cuda_engine(f.read())
+      cfg.trt_model_path = cfg.model_path
+      model_path = self.build_trt_engine(cfg)
 
+    with open(model_path, 'rb') as f, trt.Runtime(TRT_LOGGER) as runtime:
+      model = runtime.deserialize_cuda_engine(f.read())
+    
     if cfg.return_path:
-      if cfg.return_path != cfg.model_path:
-        set_file_dir(cfg.return_path)
-        os.system('cp {} {}'.format(cfg.model_path, cfg.return_path))
-      return model,cfg.model_path
+      return model, model_path
     else:
-      return model 
+      return model
+
+
 
   @check_class_parameter
   def Is_Pretrained_Trt_Matched(self,cfg):

@@ -54,7 +54,7 @@ class classification(baseModel):
     if cfg.onnx_model_path:
       onnx_file_path = cfg.onnx_model_path
     else:
-      _,onnx_file_path = self.onnx(input_shape=cfg.input_shape,batch_size=cfg.batch_size, return_path="build/cv/classification/tmp.onnx")
+      _,onnx_file_path = self.onnx(input_shape=cfg.input_shape,batch_size=cfg.batch_size, return_path=True, model_path="build/cv/classification/tmp.onnx")
 
 
     # if force calibrate or the preprocess dir doesn't exists, do the preprocess
